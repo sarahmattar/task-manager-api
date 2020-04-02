@@ -57,7 +57,7 @@ router.post('/users/login', async (req, res) => {
 
 router.post('/users/logout', auth, async (req, res) => {
 	try {
-		req.user.tokens = req.user.tokens.filter((token) => {
+		req.user.tokens = req.user.tokens.filter(token => {
 			// keeps the unused tokens in the tokens array
 			return token.token !== req.token;
 		});
@@ -91,15 +91,15 @@ router.get('/users/me', auth, async (req, res) => {
 router.patch('/users/me', auth, async (req, res) => {
 	const updates = Object.keys(req.body);
 	const isAllowed = ['name', 'email', 'age', 'password'];
-	const isValid = updates.every((update) => isAllowed.includes(update));
+	const isValid = updates.every(update => isAllowed.includes(update));
 
 	if (!isValid) {
-		res.status(400).send({ error: 'invalid update fields.' });
+		return res.status(400).send({ error: 'invalid update fields.' });
 	}
 
 	try {
 		//this is called bracket notation, it is dynamic
-		updates.forEach((update) => (req.user[update] = req.body[update]));
+		updates.forEach(update => (req.user[update] = req.body[update]));
 
 		await req.user.save();
 
