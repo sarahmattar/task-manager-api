@@ -1,6 +1,7 @@
 const request = require('supertest');
 const app = require('../src/app');
 const User = require('../src/models/user');
+const Task = require('../src/models/task');
 const { setupDatabase, userOne, userOneId } = require('./fixtures/db');
 
 beforeEach(setupDatabase);
@@ -78,6 +79,9 @@ test('Should let authorized user delete account', async () => {
 	//assert that user account should be deleted
 	const user = await User.findById(userOneId);
 	expect(user).toBeNull();
+
+	//assert that the user's tasks were deleted too
+	expect(await Task.countDocuments({ owner: userOneId })).toBe(0);
 });
 
 test('Should not let unauthorized user delete account', async () => {
