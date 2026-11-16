@@ -1,6 +1,8 @@
 const request = require('supertest');
 const app = require('../src/app');
+const sgMail = require('@sendgrid/mail');
 const User = require('../src/models/user');
+const Task = require('../src/models/task');
 const { setupDatabase, userOne, userOneId } = require('./fixtures/db');
 
 beforeEach(setupDatabase);
@@ -78,6 +80,29 @@ test('Should let authorized user delete account', async () => {
 	//assert that user account should be deleted
 	const user = await User.findById(userOneId);
 	expect(user).toBeNull();
+
+	//assert that the user's tasks were deleted too
+	expect(await Task.countDocuments({ owner: userOneId })).toBe(0);
+});
+
+test('Should still delete account when the cancellation email fails', async () => {
+	const sendSpy = jest
+		.spyOn(sgMail, 'send')
+		.mockRejectedValueOnce(new Error('SendGrid is down'));
+	const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+	await request(app)
+		.delete('/users/me')
+		.set('Authorization', `Bearer ${userOne.tokens[0].token}`)
+		.send()
+		.expect(200);
+
+	expect(sendSpy).toHaveBeenCalled();
+	expect(errorSpy).toHaveBeenCalled();
+	expect(await User.findById(userOneId)).toBeNull();
+
+	sendSpy.mockRestore();
+	errorSpy.mockRestore();
 });
 
 test('Should not let unauthorized user delete account', async () => {
