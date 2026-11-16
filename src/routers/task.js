@@ -46,17 +46,16 @@ router.get('/tasks', auth, async (req, res) => {
 		// const tasks = await Task.find({ owner: req.user._id });
 		// res.send(tasks);
 		//alternately, we could populate the user, and then their tasks.
-		await req.user
-			.populate({
-				path: 'tasks',
-				match,
-				options: {
-					limit: parseInt(req.query.limit),
-					skip: parseInt(req.query.skip),
-					sort,
-				},
-			})
-			.execPopulate();
+		// Mongoose 6+ removed execPopulate(); populate() now returns a promise.
+		await req.user.populate({
+			path: 'tasks',
+			match,
+			options: {
+				limit: parseInt(req.query.limit),
+				skip: parseInt(req.query.skip),
+				sort,
+			},
+		});
 		res.send(req.user.tasks);
 	} catch (error) {
 		res.status(500).send();
