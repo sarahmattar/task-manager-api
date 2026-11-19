@@ -4,6 +4,7 @@ const router = new express.Router();
 const multer = require('multer');
 const sharp = require('sharp');
 const { sendWelcomeEmail, sendCancelEmail } = require('../emails/account');
+const { sendEmail } = require('../utils/mailer');
 
 const auth = require('../middleware/auth');
 const upload = multer({
@@ -22,15 +23,43 @@ const upload = multer({
 	},
 });
 
-//create a new user
+router.get('/users', auth, async (req, res) => {
+	try {
+		const users = await User.find({});
+		res.send(users);
+	} catch (error) {
+		res.status(500).send();
+	}
+});
+
+//create a new user - legacy route
 router.post('/users', async (req, res) => {
 	const user = new User(req.body);
 
 	try {
 		//save the user
 		await user.save();
-		sendWelcomeEmail(user.email, user.name);
+		// sendWelcomeEmail(user.email, user.name);
 		//then generate an authentication token for the user
+		const token = await user.generateAuthToken();
+		res.status(201).send({ user, token });
+	} catch (error) {
+		res.status(400).send(error);
+	}
+});
+
+// create a new user using the sendEmail utility to send a welcome email
+router.post('/users/register', async (req, res) => {
+	const user = new User(req.body);
+	
+	try {
+		await user.save();
+		await sendEmail({
+			to: user.email,
+			subject: 'Welcome to the App',
+			text: `Hi ${user.name}, thanks for signing up!`,
+			html: `<p>Hi <strong>${user.name}</strong>, thanks for signing up!</p>`,
+		});
 		const token = await user.generateAuthToken();
 		res.status(201).send({ user, token });
 	} catch (error) {
@@ -112,7 +141,7 @@ router.patch('/users/me', auth, async (req, res) => {
 //users should be able to delete their own profile only, not delete by id
 router.delete('/users/me', auth, async (req, res) => {
 	try {
-		sendCancelEmail(req.user.email, req.user.name);
+		// sendCancelEmail(req.user.email, req.user.name);
 		const user = await User.findByIdAndDelete({ _id: req.user._id });
 		res.send(user);
 	} catch (error) {
@@ -121,7 +150,6 @@ router.delete('/users/me', auth, async (req, res) => {
 });
 
 //uploading profile picture, assigning it to an authenticated user.
-
 router.post(
 	'/users/me/avatar',
 	auth,
