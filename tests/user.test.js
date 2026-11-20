@@ -1,13 +1,15 @@
 const request = require('supertest');
 const app = require('../src/app');
+const nodemailer = require('nodemailer');
 const User = require('../src/models/user');
+const Task = require('../src/models/task');
 const { setupDatabase, userOne, userOneId } = require('./fixtures/db');
 
 beforeEach(setupDatabase);
 
 test('Should register a new user', async () => {
 	const response = await request(app)
-		.post('/users')
+		.post('/users/register')
 		.send({
 			name: 'Sarah Mattar',
 			email: 'sarah@gmail.com',
@@ -78,6 +80,27 @@ test('Should let authorized user delete account', async () => {
 	//assert that user account should be deleted
 	const user = await User.findById(userOneId);
 	expect(user).toBeNull();
+
+	//assert that the user's tasks were deleted too
+	expect(await Task.countDocuments({ owner: userOneId })).toBe(0);
+});
+
+test('Should still delete account when the cancellation email fails', async () => {
+	const { sendMail } = nodemailer.createTransport();
+	sendMail.mockRejectedValueOnce(new Error('SMTP server is down'));
+	const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+	await request(app)
+		.delete('/users/me')
+		.set('Authorization', `Bearer ${userOne.tokens[0].token}`)
+		.send()
+		.expect(200);
+
+	expect(sendMail).toHaveBeenCalled();
+	expect(errorSpy).toHaveBeenCalled();
+	expect(await User.findById(userOneId)).toBeNull();
+
+	errorSpy.mockRestore();
 });
 
 test('Should not let unauthorized user delete account', async () => {

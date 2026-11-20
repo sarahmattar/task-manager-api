@@ -119,12 +119,13 @@ userSchema.pre('save', async function(next) {
 	next();
 });
 
-// Delete the user's tasks when the user is deleted
-userSchema.pre('remove', async function() {
-	const user = this;
-	//load the task model, and then use Task to remove the tasks
-	await Task.deleteMany({ owner: user._id });
-	next();
+// Delete the user's tasks when the user is deleted.
+// findByIdAndDelete() triggers findOneAndDelete middleware; the old
+// 'remove' hook never fired for it and was removed in Mongoose 7.
+userSchema.post('findOneAndDelete', async function(user) {
+	if (user) {
+		await Task.deleteMany({ owner: user._id });
+	}
 });
 
 const User = mongoose.model('User', userSchema);

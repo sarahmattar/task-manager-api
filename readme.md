@@ -24,7 +24,7 @@ The tests (`npm test`) need MongoDB running too. Start it with `npm run dev:mong
 
 Path | Description
 ---- | -----------
-/users              | Register a user (sends a welcome email via [Nodemailer](https://nodemailer.com/))
+/users/register     | Register a user (sends a welcome email via [Nodemailer](https://nodemailer.com/))
 /users/login        | Login an existing user
 /users/me           | Access user profile for authorized user, update a user's profile, delete authorized user (sends a cancellation email via [Nodemailer](https://nodemailer.com/))
 /users/me/avatar    | Upload avatar image for user, image is converted to PNG and resized using [Sharp](https://www.npmjs.com/package/sharp). 

@@ -161,10 +161,6 @@ router.post(
 
 router.delete('/users/me/avatar', auth, async (req, res) => {
 	req.user.avatar = undefined;
-	await sendEmail({
-		to: req.user.email,
-		...(await sendCancelEmail({ name: req.user.name })),
-	});
 	await req.user.save();
 	res.send();
 });

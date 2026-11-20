@@ -39,6 +39,41 @@ test('Should return only tasks for owner', async () => {
 	expect(response.body.length).toEqual(2);
 });
 
+test('Should filter tasks by completed status', async () => {
+	const response = await request(app)
+		.get('/tasks?completed=true')
+		.set('Authorization', `Bearer ${userOne.tokens[0].token}`)
+		.send()
+		.expect(200);
+
+	expect(response.body.length).toEqual(1);
+	expect(response.body[0]._id).toEqual(taskTwo._id.toString());
+});
+
+test('Should paginate tasks with limit and skip', async () => {
+	const response = await request(app)
+		.get('/tasks?limit=1&skip=1&sortBy=task:asc')
+		.set('Authorization', `Bearer ${userOne.tokens[0].token}`)
+		.send()
+		.expect(200);
+
+	expect(response.body.length).toEqual(1);
+	expect(response.body[0].task).toEqual(taskTwo.task);
+});
+
+test('Should sort tasks', async () => {
+	const response = await request(app)
+		.get('/tasks?sortBy=task:desc')
+		.set('Authorization', `Bearer ${userOne.tokens[0].token}`)
+		.send()
+		.expect(200);
+
+	expect(response.body.map((t) => t.task)).toEqual([
+		taskTwo.task,
+		taskOne.task,
+	]);
+});
+
 test('Should not be able to delete task if unauthorized', async () => {
 	const response = await request(app)
 		.delete(`/tasks/${taskOne._id}`)
