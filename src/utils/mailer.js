@@ -1,5 +1,5 @@
 // utils/mailer.js
-import nodemailer from 'nodemailer';
+const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || '127.0.0.1',
@@ -9,12 +9,14 @@ const transporter = nodemailer.createTransport({
   // No auth block needed for local Mailpit
 });
 
-export async function sendEmail({ to, subject, html, text }) {
-  return transporter.sendMail({
-    from: `"My Local App" <${process.env.MAIL_FROM}>`,
-    to,
-    subject,
-    text,
-    html,
-  });
+async function sendEmail({ to, subject, html, text }) {
+	return transporter.sendMail({
+		from: `"My Local App" <${process.env.MAIL_FROM}>`,
+		to,
+		subject,
+		text,
+		html,
+	});
 }
+
+module.exports = { sendEmail };

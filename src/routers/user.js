@@ -3,8 +3,8 @@ const User = require('../models/user');
 const router = new express.Router();
 const multer = require('multer');
 const sharp = require('sharp');
-const { sendWelcomeEmail, sendCancelEmail } = require('../emails/account');
 const { sendEmail } = require('../utils/mailer');
+const { sendWelcomeEmail, sendCancelEmail } = require('../emails/messages');
 
 const auth = require('../middleware/auth');
 const upload = multer({
@@ -32,22 +32,6 @@ router.get('/users', auth, async (req, res) => {
 	}
 });
 
-//create a new user - legacy route
-router.post('/users', async (req, res) => {
-	const user = new User(req.body);
-
-	try {
-		//save the user
-		await user.save();
-		// sendWelcomeEmail(user.email, user.name);
-		//then generate an authentication token for the user
-		const token = await user.generateAuthToken();
-		res.status(201).send({ user, token });
-	} catch (error) {
-		res.status(400).send(error);
-	}
-});
-
 // create a new user using the sendEmail utility to send a welcome email
 router.post('/users/register', async (req, res) => {
 	const user = new User(req.body);
@@ -56,9 +40,7 @@ router.post('/users/register', async (req, res) => {
 		await user.save();
 		await sendEmail({
 			to: user.email,
-			subject: 'Welcome to the App',
-			text: `Hi ${user.name}, thanks for signing up!`,
-			html: `<p>Hi <strong>${user.name}</strong>, thanks for signing up!</p>`,
+			...(await sendWelcomeEmail({ name: user.name })),
 		});
 		const token = await user.generateAuthToken();
 		res.status(201).send({ user, token });
@@ -141,7 +123,10 @@ router.patch('/users/me', auth, async (req, res) => {
 //users should be able to delete their own profile only, not delete by id
 router.delete('/users/me', auth, async (req, res) => {
 	try {
-		// sendCancelEmail(req.user.email, req.user.name);
+		await sendEmail({
+			to: req.user.email,
+			...(await sendCancelEmail({ name: req.user.name })),
+		});
 		const user = await User.findByIdAndDelete({ _id: req.user._id });
 		res.send(user);
 	} catch (error) {
@@ -176,6 +161,10 @@ router.post(
 
 router.delete('/users/me/avatar', auth, async (req, res) => {
 	req.user.avatar = undefined;
+	await sendEmail({
+		to: req.user.email,
+		...(await sendCancelEmail({ name: req.user.name })),
+	});
 	await req.user.save();
 	res.send();
 });
