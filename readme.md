@@ -4,33 +4,29 @@ This is a Node and Express-based API service for a Task Manager application, wit
 
 ### Running Locally
 
-**Start the MongoDB server first.** The API connects to MongoDB when it starts, and if no server is running it crashes with `MongooseServerSelectionError: connect ECONNREFUSED 127.0.0.1:27017`.
+Start MongoDB, [Mailpit](https://mailpit.axllent.org/), and the API together:
 
-1. In its own terminal tab, start MongoDB and leave it running:
+```sh
+npm run dev
+```
 
-   ```sh
-   ~/mongodb/bin/mongod --dbpath=$HOME/mongodb-data
-   ```
+Output from each process is prefixed with `[mongo]`, `[mail]`, or `[api]`, and Ctrl-C stops all three. If MongoDB or Mailpit is already running (for example, as a `brew services` service), that step is skipped.
 
-   Adjust the paths if MongoDB or the data folder are somewhere else. Use a `mongod` binary whose major version matches the data folder. Newer versions refuse to open data written by an older major version.
+- **MongoDB** runs `~/mongodb/bin/mongod --dbpath=$HOME/mongodb-data`. If MongoDB or the data folder is somewhere else, edit the `dev:mongo` script in `package.json`. Use a `mongod` binary whose major version matches the data folder. Newer versions refuse to open data written by an older major version.
+- **Mailpit** catches every email the app sends. Read them at http://127.0.0.1:8025. Install it with `brew install mailpit`.
+- **The API** loads environment variables from `config/dev.env`, including `MONGODB_URL`, which defaults to `mongodb://127.0.0.1:27017/task-manager-api`.
 
-2. In a second terminal tab, start the API:
+To run a single piece, use `npm run dev:mongo`, `npm run dev:mail`, or `npm run dev:api`.
 
-   ```sh
-   npm run dev
-   ```
-
-   This loads environment variables from `config/dev.env`, including `MONGODB_URL`, which defaults to `mongodb://127.0.0.1:27017/task-manager-api`.
-
-The tests (`npm test`) need the MongoDB server running too.
+The tests (`npm test`) need MongoDB running too. Start it with `npm run dev:mongo` in another tab.
 
 ### Endpoints
 
 Path | Description
 ---- | -----------
-/users              | Register a user (sends welcome email via [SendGrid](https://sendgrid.com/))
+/users/register     | Register a user (sends a welcome email via [Nodemailer](https://nodemailer.com/))
 /users/login        | Login an existing user
-/users/me           | Access user profile for authorized user, update a user's profile, delete authorized user (sends cancellation email via [SendGrid](https://sendgrid.com/))
+/users/me           | Access user profile for authorized user, update a user's profile, delete authorized user (sends a cancellation email via [Nodemailer](https://nodemailer.com/))
 /users/me/avatar    | Upload avatar image for user, image is converted to PNG and resized using [Sharp](https://www.npmjs.com/package/sharp). 
 /tasks              | Create a task, owned by the current user who is logged in.
 /tasks/:id          | Query a task, update a task, delete a task.

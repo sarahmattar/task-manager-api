@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../src/app');
-const sgMail = require('@sendgrid/mail');
+const nodemailer = require('nodemailer');
 const User = require('../src/models/user');
 const Task = require('../src/models/task');
 const { setupDatabase, userOne, userOneId } = require('./fixtures/db');
@@ -9,7 +9,7 @@ beforeEach(setupDatabase);
 
 test('Should register a new user', async () => {
 	const response = await request(app)
-		.post('/users')
+		.post('/users/register')
 		.send({
 			name: 'Sarah Mattar',
 			email: 'sarah@gmail.com',
@@ -86,9 +86,8 @@ test('Should let authorized user delete account', async () => {
 });
 
 test('Should still delete account when the cancellation email fails', async () => {
-	const sendSpy = jest
-		.spyOn(sgMail, 'send')
-		.mockRejectedValueOnce(new Error('SendGrid is down'));
+	const { sendMail } = nodemailer.createTransport();
+	sendMail.mockRejectedValueOnce(new Error('SMTP server is down'));
 	const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
 	await request(app)
@@ -97,11 +96,10 @@ test('Should still delete account when the cancellation email fails', async () =
 		.send()
 		.expect(200);
 
-	expect(sendSpy).toHaveBeenCalled();
+	expect(sendMail).toHaveBeenCalled();
 	expect(errorSpy).toHaveBeenCalled();
 	expect(await User.findById(userOneId)).toBeNull();
 
-	sendSpy.mockRestore();
 	errorSpy.mockRestore();
 });
 

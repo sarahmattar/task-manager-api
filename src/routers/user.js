@@ -3,7 +3,8 @@ const User = require('../models/user');
 const router = new express.Router();
 const multer = require('multer');
 const sharp = require('sharp');
-const { sendWelcomeEmail, sendCancelEmail } = require('../emails/account');
+const { sendEmail } = require('../utils/mailer');
+const { sendWelcomeEmail, sendCancelEmail } = require('../emails/messages');
 
 const auth = require('../middleware/auth');
 const upload = multer({
@@ -22,15 +23,25 @@ const upload = multer({
 	},
 });
 
-//create a new user
-router.post('/users', async (req, res) => {
-	const user = new User(req.body);
-
+router.get('/users', auth, async (req, res) => {
 	try {
-		//save the user
+		const users = await User.find({});
+		res.send(users);
+	} catch (error) {
+		res.status(500).send();
+	}
+});
+
+// create a new user using the sendEmail utility to send a welcome email
+router.post('/users/register', async (req, res) => {
+	const user = new User(req.body);
+	
+	try {
 		await user.save();
-		sendWelcomeEmail(user.email, user.name);
-		//then generate an authentication token for the user
+		await sendEmail({
+			to: user.email,
+			...(await sendWelcomeEmail({ name: user.name })),
+		});
 		const token = await user.generateAuthToken();
 		res.status(201).send({ user, token });
 	} catch (error) {
@@ -112,7 +123,10 @@ router.patch('/users/me', auth, async (req, res) => {
 //users should be able to delete their own profile only, not delete by id
 router.delete('/users/me', auth, async (req, res) => {
 	try {
-		sendCancelEmail(req.user.email, req.user.name);
+		await sendEmail({
+			to: req.user.email,
+			...(await sendCancelEmail({ name: req.user.name })),
+		});
 		const user = await User.findByIdAndDelete({ _id: req.user._id });
 		res.send(user);
 	} catch (error) {
@@ -121,7 +135,6 @@ router.delete('/users/me', auth, async (req, res) => {
 });
 
 //uploading profile picture, assigning it to an authenticated user.
-
 router.post(
 	'/users/me/avatar',
 	auth,
